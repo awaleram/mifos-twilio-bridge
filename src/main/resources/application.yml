@@ -30,12 +30,12 @@ dataTable: officedetails
 message:
   template:
     createclient: Dear $name, welcome to $branch, your member no is $externalid .Have a blessed day. 
-    loanrepayment: Hello $name, repayment for $account received!
+    loanrepayment: Hello $name, repayment for $account received. $branch
     savingsaccountclose: Dear $name, your account has been closed, collect your savings of $amount . $branch 
-    loandisbursed: Dear $clientName, your loan has been disbursed  Collect your cheque at the group office. $branch
+    loandisbursed: Dear $name, your loan has been disbursed  Collect your cheque at the group office. $branch
     loanApproval: Dear $guarantorName, you have been added as a guarantor to $lonee by $amountCommited. $branch
-    savingsAccountClosure: Dear $clientName, your account has been closed, collect your savings of $savingAmount. $branch	
-    clientPayments: Dear $clientName, we have received your payment of $totalAmount. $branch. Our pay bill no is $billNumber 
+    savingsAccountClosure: Dear $name, your account has been closed, collect your savings of $savingAmount. $branch	
+    clientPayments: Dear $name, we have received your payment of $totalAmount.Ref No: $billNumber. $branch
     loanrepaymentsmsreminder: Dear $name, your loan repayment is due on $duedate. Please pay to avoid arrears. $branch
     loanFirstAndSecondOverdueRepaymentReminder: Dear $name, your loan is overdue by $overdueamount for $month, please repay your loan .$branch.
     loanThirdAndFourthOverdueRepaymentReminder: Dear $gurantorname,loan for $name  where you are a guarantor is not being serviced.If the loan is not repaid,we will have to recover the balance from your committed shares. $branch
@@ -46,5 +46,6 @@ message:
     loanAndSavingsBalance:  Dear $name, you don't have Loan and Savings Account Thanks, $branch.
     loanAndSavingsTransaction: Dear $name ,cannot make a Transaction Thanks $branch.
     invalidText:  Dear $name,  for balance enquiry please,type Balance and for mini statement type Mini Thanks, $branch.
-    miniStatement: Dear $name,Your MiniStmt is $meassage Thanks, $branch.  
-    balance: Dear $name,Your $balancemessage Thanks, $branch.
+    miniStatement: Dear $name,Your MiniStmt is $meassage thanks. $branch.  
+    balance: Dear $name,Your $balancemessage thanks. $branch.
+	
