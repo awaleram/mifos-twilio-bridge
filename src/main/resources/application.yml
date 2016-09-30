@@ -35,7 +35,7 @@ message:
     loandisbursed: Dear $firstName, your loan has been disbursed  Collect your cheque at the group office. $branch
     loanApproval: Dear $guarantorName, you have been added as a guarantor to $lonee by $amountCommited. $branch
     savingsAccountClosure: Dear $firstName, your account has been closed, collect your savings of $savingAmount. $branch	
-    clientPayments: Dear $firstName, we have received your payment of $totalAmount.Ref No- $billNumber. $branch
+    clientPayments: Dear $firstName, we have received your payment of $totalAmount .Ref No- $billNumber. $branch
     loanrepaymentsmsreminder: Dear $name, your loan repayment is due on $duedate. Please pay to avoid arrears. $branch
     loanFirstAndSecondOverdueRepaymentReminder: Dear $name, your loan is overdue by $overdueamount for $month, please repay your loan .$branch.
     loanThirdAndFourthOverdueRepaymentReminder: Dear $gurantorname,loan for $name  where you are a guarantor is not being serviced.If the loan is not repaid,we will have to recover the balance from your committed shares. $branch
