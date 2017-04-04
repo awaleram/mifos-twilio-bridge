@@ -166,7 +166,8 @@ public class IncomingSmsSendListener implements ApplicationListener<IncomingSmsE
                         //checking 
                            logger.info("Inital "+incomingSmsID.getEntityName());
                            logger.info("Inital "+incomingSmsID.getParentName());
-                        if (incomingSmsClientId.getMessage().trim().contains("CaritasBalance")) {
+                           String requestType = incomingSmsClientId.getMessage().trim().toLowerCase() ;
+                        if (requestType.contains("caritas balance")) {
                                   if ( loanAccounts!=null) {
                                       String[]str=incomingSmsID.getEntityName().split(" ");
                                       velocityContext.put("name", str[0]);                                      
@@ -197,7 +198,7 @@ public class IncomingSmsSendListener implements ApplicationListener<IncomingSmsE
                                 }
                             }
                             final SMSGateway smsGateway = this.smsGatewayProvider.get(smsBridgeConfig.getSmsProvider());
-                            if(message!=null&& message!=""){
+                            if(message.isEmpty()){ 
                                 velocityContext.put("balancemessage", message); 
                                 Velocity.evaluate(velocityContext, stringWriter, "balance", this.balance);                    
                              
@@ -235,7 +236,7 @@ public class IncomingSmsSendListener implements ApplicationListener<IncomingSmsE
                          * method for getting miniStatement by passing clientId
                          * as parameter
                          */
-                        else if (incomingSmsClientId.getMessage().trim().contains("CaritasMini")) {
+                        else if (requestType.contains("caritas mini")) {
                             ArrayList<MiniStatementDetails> miniStatementDetail = IncomingSmsService.findMiniStatementDetails(
                                     AuthorizationTokenBuilder.token(smsBridgeConfig.getMifosToken()).build(),
                                     smsBridgeConfig.getTenantId(), incomingSmsID.getEntityId());
