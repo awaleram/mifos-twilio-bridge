@@ -166,8 +166,9 @@ public class IncomingSmsSendListener implements ApplicationListener<IncomingSmsE
                         //checking 
                            logger.info("Inital "+incomingSmsID.getEntityName());
                            logger.info("Inital "+incomingSmsID.getParentName());
-                           String requestType = incomingSmsClientId.getMessage().trim().toLowerCase() ;
-                        if (requestType.contains("caritas balance")) {
+                           String requestType = incomingSmsClientId.getMessage().trim().toLowerCase();
+                           logger.info("Requested Type : " + incomingSmsClientId.getMessage());
+                        if (requestType.contains("balance")) {
                                   if ( loanAccounts!=null) {
                                       String[]str=incomingSmsID.getEntityName().split(" ");
                                       velocityContext.put("name", str[0]);                                      
@@ -236,7 +237,7 @@ public class IncomingSmsSendListener implements ApplicationListener<IncomingSmsE
                          * method for getting miniStatement by passing clientId
                          * as parameter
                          */
-                        else if (requestType.contains("caritas mini")) {
+                        else if (requestType.contains("mini")) {
                             ArrayList<MiniStatementDetails> miniStatementDetail = IncomingSmsService.findMiniStatementDetails(
                                     AuthorizationTokenBuilder.token(smsBridgeConfig.getMifosToken()).build(),
                                     smsBridgeConfig.getTenantId(), incomingSmsID.getEntityId());
