@@ -199,7 +199,7 @@ public class IncomingSmsSendListener implements ApplicationListener<IncomingSmsE
                                 }
                             }
                             final SMSGateway smsGateway = this.smsGatewayProvider.get(smsBridgeConfig.getSmsProvider());
-                            if(message.isEmpty()){ 
+                            if(!message.isEmpty()){ 
                                 velocityContext.put("balancemessage", message); 
                                 Velocity.evaluate(velocityContext, stringWriter, "balance", this.balance);                    
                              
@@ -255,7 +255,7 @@ public class IncomingSmsSendListener implements ApplicationListener<IncomingSmsE
                             }
                             
                               final SMSGateway smsGateway = this.smsGatewayProvider.get(smsBridgeConfig.getSmsProvider());
-                            if(message!=null && message!=""){
+                            if(!message.isEmpty()){
                                 velocityContext.put("meassage", message); 
                                 Velocity.evaluate(velocityContext, stringWriter, "miniStatement", this.miniStatement);                         
                             JSONArray response= smsGateway.sendMessage(smsBridgeConfig, incomingMobileNo, stringWriter.toString());
