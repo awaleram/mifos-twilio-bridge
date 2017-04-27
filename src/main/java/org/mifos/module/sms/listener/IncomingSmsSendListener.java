@@ -386,7 +386,7 @@ public class IncomingSmsSendListener implements ApplicationListener<IncomingSmsE
     }
     
     public boolean isSmsEnabled(Long officeId){
-    	String sql = " SELECT sms_enabled FROM OfficeDetails WHERE office_id = " + officeId;
+    	String sql = " SELECT	 sms_enabled FROM OfficeDetails WHERE office_id = " + officeId;
     	int queryResult = this.jdbcTemplate.queryForInt(sql);
     	boolean isSmsEnabled = BooleanUtils.toBoolean(queryResult);
     	return isSmsEnabled;

@@ -12,6 +12,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.mifos.module.sms.domain.Client;
 import org.mifos.module.sms.domain.EventSource;
+import org.mifos.module.sms.domain.EventSourceDetail;
 import org.mifos.module.sms.domain.Loan;
 import org.mifos.module.sms.domain.LoanApprovalToGuarantorsResponse;
 import org.mifos.module.sms.domain.SMSBridgeConfig;
@@ -21,6 +22,7 @@ import org.mifos.module.sms.parser.JsonParser;
 import org.mifos.module.sms.provider.RestAdapterProvider;
 import org.mifos.module.sms.provider.SMSGateway;
 import org.mifos.module.sms.provider.SMSGatewayProvider;
+import org.mifos.module.sms.repository.EventSourceDetailsRepository;
 import org.mifos.module.sms.repository.EventSourceRepository;
 import org.mifos.module.sms.repository.SMSBridgeConfigRepository;
 import org.mifos.module.sms.service.MifosClientService;
@@ -49,6 +51,7 @@ public class LoanApprovalToGuarantorsEventListener implements
 
 	private final SMSBridgeConfigRepository smsBridgeConfigRepository;
 	private final EventSourceRepository eventSourceRepository;
+	private final EventSourceDetailsRepository eventSourceDetailsRepository;
 	private final RestAdapterProvider restAdapterProvider;
 	private final SMSGatewayProvider smsGatewayProvider;
 	private final JsonParser jsonParser;
@@ -58,13 +61,15 @@ public class LoanApprovalToGuarantorsEventListener implements
 			SMSBridgeConfigRepository smsBridgeConfigRepository,
 			EventSourceRepository eventSourceRepository,
 			RestAdapterProvider restAdapterProvider,
-			SMSGatewayProvider smsGatewayProvider, JsonParser jsonParser) {
+			SMSGatewayProvider smsGatewayProvider, JsonParser jsonParser,
+			EventSourceDetailsRepository eventSourceDetailsRepository) {
 		super();
 		this.smsBridgeConfigRepository = smsBridgeConfigRepository;
 		this.eventSourceRepository = eventSourceRepository;
 		this.restAdapterProvider = restAdapterProvider;
 		this.smsGatewayProvider = smsGatewayProvider;
 		this.jsonParser = jsonParser;
+		this.eventSourceDetailsRepository = eventSourceDetailsRepository;
 	}
 
 	@Transactional
@@ -120,14 +125,25 @@ public class LoanApprovalToGuarantorsEventListener implements
 		for (int i = 0; i < guarantorIdList.size(); i++) {
 
 			if (guarantorIdList.get(i) != null) {
-
+				EventSourceDetail eventSourceDetails = new EventSourceDetail();
+				eventSourceDetails.setEventId(eventSource.getId());
+				eventSourceDetails.setEntity(eventSource.getEntity());
+				eventSourceDetails.setAction(eventSource.getAction());
+				eventSourceDetails.setPayload(eventSource.getPayload());
+				eventSourceDetails.setTenantId(eventSource.getTenantId());
+				eventSourceDetails.setEntity("Loan_Approve");
+				
 				try {
 
 					Long guarantorId = guarantorIdList.get(i);
 					final Client guarantor = clientService.findClient(
 							authToken, smsBridgeConfig.getTenantId(),
 							guarantorId);
-
+					eventSourceDetails.setEntityName(guarantor.getDisplayName());
+					eventSourceDetails.setEntityMobileNo(guarantor.getMobileNo());
+					eventSourceDetails.setAction("Loan_Approve");
+					
+					
 					Double amount = null;
 					if (loan.getAmount() != null) {
 						amount = loan.getAmount().get(i);
@@ -152,27 +168,36 @@ public class LoanApprovalToGuarantorsEventListener implements
 		                if(result.getString("status").equals("success")||result.getString("status").equalsIgnoreCase("success"))
 		                {
 		                	eventSource.setProcessed(Boolean.TRUE);
+		                	eventSourceDetails.setProcessed(Boolean.TRUE);
 		                }
 						logger.info("Message is: "+ stringWriter);
 					}
 
 					eventSource.setProcessed(Boolean.TRUE);
+					eventSourceDetails.setProcessed(Boolean.TRUE);
 					logger.info("Loan approval to guarantors event processed!");
 				} catch (RetrofitError ret) {
 					if (ret.getResponse().getStatus() == 404) {
 						logger.info("Loan not found!");
 					}
 					eventSource.setProcessed(Boolean.FALSE);
+					eventSourceDetails.setProcessed(Boolean.FALSE);
 					eventSource.setErrorMessage(ret.getMessage());
+					eventSourceDetails.setErrorMessage(ret.getMessage());
 				} catch (SMSGatewayException sgex) {
 					eventSource.setProcessed(Boolean.FALSE);
+					eventSourceDetails.setProcessed(Boolean.FALSE);
 					eventSource.setErrorMessage(sgex.getMessage());
+					eventSourceDetails.setErrorMessage(sgex.getMessage());
 				} catch (JSONException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				eventSource.setLastModifiedOn(new Date());
+				eventSourceDetails.setLastModifiedOn(new Date());
 				this.eventSourceRepository.save(eventSource);
+				this.eventSourceDetailsRepository.save(eventSourceDetails);
+				
 			}
 		}
 	}
