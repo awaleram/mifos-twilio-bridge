@@ -243,7 +243,7 @@ public class IncomingSmsSendListener implements ApplicationListener<IncomingSmsE
                                     smsBridgeConfig.getTenantId(), incomingSmsID.getEntityId());
                             for (MiniStatementDetails miniStatementDetails : miniStatementDetail) {
                                 String recno = miniStatementDetails.getReceiptNumber();
-                                if (recno.contains("dummy")) {
+                                if (recno == null || recno.contains("dummy")) {
                                     recno = "RPT: ";
                                 }
                                 message = message + "Rpt-"+recno+":"+" "+ miniStatementDetails.getTransactionDate() + " "
