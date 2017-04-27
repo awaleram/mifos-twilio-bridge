@@ -16,14 +16,17 @@ spring:
       ddl-auto: none
 
   datasource:
-    url: jdbc:mysql://localhost:3306/caritas-prod
+    url: jdbc:mysql://localhost:3306/caritas?autoReconnect=true
     username: root
-    password: mysql
+    password: Cflx_Caritas01
     driver-class-name: com.mysql.jdbc.Driver
+    validationQuery: select 1
+    validationInterval: 40000
+    testOnBorrow: true
  
-tenantIdentifier: default
+tenantIdentifier: livemis
 
-dataTable: officedetails
+dataTable: OfficeDetails
   
 
 # message templates
@@ -45,6 +48,6 @@ message:
     messageForDormancyWarningToclient: Dear $name, Your account will be moved to dormancy.Please make a payment to avoid this. $branch
     loanAndSavingsBalance:  Dear $name, you don't have Loan and Savings Account Thanks, $branch.
     loanAndSavingsTransaction: Dear $name ,cannot make a Transaction Thanks $branch.
-    invalidText:  Dear $name,  for balance enquiry please,type Balance and for mini statement type Mini Thanks, $branch.
+    invalidText:  Dear $name,  for balance enquiry please,type Caritas Balance and for mini statement type Caritas Mini Thanks, $branch.
     miniStatement: Dear $name,Your MiniStmt is $meassage thanks. $branch.
     balance: Dear $name,Your $balancemessage thanks. $branch.
