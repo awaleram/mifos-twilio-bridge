@@ -18,7 +18,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/caritas?autoReconnect=true
     username: root
-    password: Cflx_Caritas01
+    password: mysql
     driver-class-name: com.mysql.jdbc.Driver
     validationQuery: select 1
     validationInterval: 40000
