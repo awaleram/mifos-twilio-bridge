@@ -99,8 +99,9 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
         String date = bulkSmsResponse.getDate();
         final RestAdapter restAdapter = this.restAdapterProvider.get(smsBridgeConfig);
         final MifosBulkSmsService BulkSmsService = restAdapter.create(MifosBulkSmsService.class);
+        final Integer officeId = 0;
         final BulkSms bulkSms = BulkSmsService.findLoanReminder(AuthorizationTokenBuilder.token(smsBridgeConfig.getMifosToken()).build(),
-                smsBridgeConfig.getTenantId(), reportName, date);
+                smsBridgeConfig.getTenantId(), reportName, date, officeId);
         final VelocityContext velocityContext = new VelocityContext();
         final ArrayList<JsonObject> bulkSms_clientdata = bulkSms.getData();
         BulkSmsListener bulkSmsListener = new BulkSmsListener();
@@ -137,17 +138,17 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                     eventSourceDetail.setEntityId(entityIdList.get(i));
                     eventSourceDetail.setEntityName("Loans");
                     detail = eventSourceDetailRepository.findByEntityIdandMobileNumberandProcessed(entityIdList.get(i),
-                            guarantorsMobileNumberList.get(i), "Loans", Boolean.TRUE);
+                            guarantorsMobileNumberList.get(i), "Loans");
                 } else {
                     mobileNo = clientMobileNumberList.get(i);
                     if (reportName.equalsIgnoreCase("DormancyWarning - Clients")) {
                         detail = eventSourceDetailRepository.findByEntityIdandMobileNumberandProcessed(savingIdList.get(i),
-                                clientMobileNumberList.get(i), "savings", Boolean.TRUE);
+                                clientMobileNumberList.get(i), "savings");
                         eventSourceDetail.setEntityId(savingIdList.get(i));
                         eventSourceDetail.setEntityName("savings");
                     } else {
                         detail = eventSourceDetailRepository.findByEntityIdandMobileNumberandProcessed(entityIdList.get(i),
-                                clientMobileNumberList.get(i), "Loans", Boolean.TRUE);
+                                clientMobileNumberList.get(i), "Loans");
                         eventSourceDetail.setEntityId(entityIdList.get(i));
                         eventSourceDetail.setEntityName("Loans");
                     }
@@ -212,6 +213,7 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                 } else if (mobileNo != null) {
                     long diffInDays = 0;
                     String sendSmsReportName = null;
+                    Boolean isSMSProcessed = Boolean.FALSE;
                     EventSourceDetail eventSourceDetail1 = new EventSourceDetail();
                     if (detail.size() != 0) {
                         int size = detail.size() - 1;
@@ -222,11 +224,15 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                         Date crrentDate = df.parse(date);
                         long timeDiff = crrentDate.getTime() - lastModifiedate.getTime();
                         diffInDays = timeDiff / (24 * 60 * 60 * 1000);
+                        if(reportName.equalsIgnoreCase(eventSourceDetail1.getReportName())){
+                        	isSMSProcessed = eventSourceDetail1.getProcessed();
+                        }
+                        
                     }
                     if (reportName.equalsIgnoreCase("Loan First Overdue Repayment Reminder")) {
                         final StringWriter stringWriter = new StringWriter();
                         if (detail.size() != 0) {
-                            if (diffInDays >= 5) {
+                            if (isSMSProcessed ==Boolean.FALSE || diffInDays > 0) {
                                 velocityContext.put("branch", clientBranchList.get(i));
                                 velocityContext.put("month", loanOverdueMonthList.get(i));
                                 velocityContext.put("overdueamount", loanOverdueDueAmountList.get(i));
@@ -272,8 +278,7 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
 
                     }
                     if (reportName.equalsIgnoreCase("Loan Repayment Reminders")) {
-                        if (detail.size() != 0) {
-                            if (diffInDays >= 5) {
+                        if (isSMSProcessed ==Boolean.FALSE) {
                                 final StringWriter stringWriter = new StringWriter();
                                 velocityContext.put("branch", clientBranchList.get(i));
                                 velocityContext.put("duedate", LoanDueDateList.get(i));
@@ -294,7 +299,6 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                                         + productShortNameList.get(i) + "\n" + "message: " + stringWriter.toString() + "\nevent processed!");
                                 totalMessageSent = totalMessageSent + 1;
 
-                            }
                         } else if (detail.size() == 0) {
                             final StringWriter stringWriter = new StringWriter();
                             velocityContext.put("branch", clientBranchList.get(i));
@@ -317,9 +321,10 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                         }
                     }
 
-                    if (detail.size() == 0 || diffInDays + 1 >= 28) {
+                    if (detail.size() == 0 || diffInDays >=0) {
                         final StringWriter stringWriter = new StringWriter();
-                        if (reportName.equalsIgnoreCase("Loan Second Overdue Repayment Reminder")) {
+                        if (reportName.equalsIgnoreCase("Loan Second Overdue Repayment Reminder")
+                        		&& isSMSProcessed == Boolean.FALSE) {
                             velocityContext.put("month", loanOverdueMonthList.get(i));
                             velocityContext.put("overdueamount", loanOverdueDueAmountList.get(i));
                             velocityContext.put("branch", clientBranchList.get(i));
@@ -331,6 +336,7 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                             if(result.getString("status").equals("success")||result.getString("status").equalsIgnoreCase("success"))
                             { 	eventSource.setProcessed(Boolean.TRUE);
                                 eventSourceDetail.setProcessed(Boolean.TRUE);
+                                isSMSProcessed = Boolean.TRUE;
                              }
                               eventSourceDetail.setMessage(stringWriter.toString());
                             eventSourceDetail.setReportName(reportName);
@@ -339,7 +345,8 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                                     + "MobileNo: " + mobileNo + "\n" + "loanId: " + entityIdList.get(i) + "\n" + "productName: "
                                     + productShortNameList.get(i) + "\n" + "message: " + stringWriter.toString() + "event processed!");
                             totalMessageSent = totalMessageSent + 1;
-                        } else if (reportName.equalsIgnoreCase("Loan Third Overdue Repayment Reminder")) {
+                        } else if (reportName.equalsIgnoreCase("Loan Third Overdue Repayment Reminder")
+                        		&& isSMSProcessed == Boolean.FALSE) {
                             Velocity.evaluate(velocityContext, stringWriter, "messageForThirdAndFourthOverdue",
                                     this.messageForThirdAndFourthOverdue);
                             final SMSGateway smsGateway = this.smsGatewayProvider.get(smsBridgeConfig.getSmsProvider());
@@ -349,6 +356,7 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                             {
                             	eventSource.setProcessed(Boolean.TRUE);
                                 eventSourceDetail.setProcessed(Boolean.TRUE);
+                                isSMSProcessed = Boolean.TRUE;
                              }
                             eventSourceDetail.setReportName(reportName);
                             eventSourceDetail.setMessage(stringWriter.toString());
@@ -357,7 +365,8 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                                     + " \n" + "MobileNo: " + mobileNo + "\n" + "loanId: " + entityIdList.get(i) + "\n" + "productName: "
                                     + productShortNameList.get(i) + "\n" + "message: " + stringWriter.toString() + "\nevent processed!");
                             totalMessageSent = totalMessageSent + 1;
-                        } else if (reportName.equalsIgnoreCase("Loan Fourth Overdue Repayment Reminder")) {
+                        } else if (reportName.equalsIgnoreCase("Loan Fourth Overdue Repayment Reminder")
+                        		&& isSMSProcessed == Boolean.FALSE) {
                             Velocity.evaluate(velocityContext, stringWriter, "messageForThirdAndFourthOverdue",
                                     this.messageForThirdAndFourthOverdue);
                             final SMSGateway smsGateway = this.smsGatewayProvider.get(smsBridgeConfig.getSmsProvider());
@@ -367,6 +376,7 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                             {
                             	eventSource.setProcessed(Boolean.TRUE);
                                 eventSourceDetail.setProcessed(Boolean.TRUE);
+                                isSMSProcessed = Boolean.TRUE;
                              }
                              eventSourceDetail.setReportName(reportName);
                             eventSourceDetail.setMessage(stringWriter.toString());
@@ -375,7 +385,8 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                                     + " \n" + "MobileNo: " + mobileNo + "\n" + "loanId: " + entityIdList.get(i) + "\n" + "productName: "
                                     + productShortNameList.get(i) + "\n" + "message: " + stringWriter.toString() + "\nevent processed!");
                             totalMessageSent = totalMessageSent + 1;
-                        } else if (reportName.equalsIgnoreCase("DefaultWarning - Clients")) {
+                        } else if (reportName.equalsIgnoreCase("DefaultWarning - Clients")
+                        		&&  isSMSProcessed == Boolean.FALSE) {
                             velocityContext.put("month", loanOverdueMonthList.get(i));
                             velocityContext.put("overdueamount", loanOverdueDueAmountList.get(i));
                             velocityContext.put("branch", clientBranchList.get(i));
@@ -388,6 +399,8 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                             {
                             	eventSource.setProcessed(Boolean.TRUE);
                                 eventSourceDetail.setProcessed(Boolean.TRUE);
+                                isSMSProcessed = Boolean.TRUE;
+                                
                              }
                             eventSourceDetail.setLastModifiedOn(now);
                             eventSourceDetail.setReportName(reportName);
@@ -397,7 +410,8 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                                     + mobileNo + "\n" + "loanId: " + entityIdList.get(i) + "\n" + "productName: "
                                     + productShortNameList.get(i) + "\n" + "message: " + stringWriter.toString() + "\nevent processed!");
                             totalMessageSent = totalMessageSent + 1;
-                        } else if (reportName.equalsIgnoreCase("DefaultWarning -  guarantors")) {
+                        } else if (reportName.equalsIgnoreCase("DefaultWarning -  guarantors")
+                        		&&  isSMSProcessed == Boolean.FALSE) {
                             velocityContext.put("commitedShare", guarantorscomittedShareList.get(i));
                             Velocity.evaluate(velocityContext, stringWriter, "messageForDefaultWarningTogurantor",
                                     this.messageForDefaultWarningTogurantor);
@@ -408,6 +422,7 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                             {
                             	eventSource.setProcessed(Boolean.TRUE);
                                 eventSourceDetail.setProcessed(Boolean.TRUE);
+                                isSMSProcessed = Boolean.TRUE;
                              }
                              eventSourceDetail.setLastModifiedOn(now);
                             eventSourceDetail.setReportName(reportName);
@@ -417,7 +432,8 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                                     + mobileNo + "\n" + "loanId: " + entityIdList.get(i) + "\n" + "productName: "
                                     + productShortNameList.get(i) + "\n" + "message: " + stringWriter.toString() + "\nevent processed!");
                             totalMessageSent = totalMessageSent + 1;
-                        } else if (reportName.equalsIgnoreCase("DormancyWarning - Clients")) {
+                        } else if (reportName.equalsIgnoreCase("DormancyWarning - Clients")
+                        		&&  isSMSProcessed == Boolean.FALSE) {
                         	if (detail.size() == 0 || diffInDays + 1 >= 90) {
                             velocityContext.put("branch", clientBranchList.get(i));
                             Velocity.evaluate(velocityContext, stringWriter, "messageForDormancyWarningToclient",
@@ -429,6 +445,7 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
                             {
                             	eventSource.setProcessed(Boolean.TRUE);
                                 eventSourceDetail.setProcessed(Boolean.TRUE);
+                                isSMSProcessed = Boolean.TRUE;
                              }
                             eventSourceDetail.setLastModifiedOn(now);
                             eventSourceDetail.setReportName(reportName);
@@ -465,7 +482,6 @@ public class BulkSmsSendListener implements ApplicationListener<BulkSmsEvent> {
 				e.printStackTrace();
 			}
             eventSource.setLastModifiedOn(new Date());
-            eventSource.setProcessed(Boolean.TRUE);
             eventSourceDetail.setLastModifiedOn(new Date());
             this.eventSourceRepository.save(eventSource);
         }

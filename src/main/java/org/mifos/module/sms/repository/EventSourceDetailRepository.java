@@ -13,10 +13,10 @@ public interface EventSourceDetailRepository extends JpaRepository<EventSourceDe
 
     public EventSourceDetail findByeventId(final Long eventId);
 
-    @Query(" from EventSourceDetail esd where esd.entityId=:entity_idparam and esd.entityMobileNo=:mobilenoparam and esd.entityName=:entitynameparam and esd.processed=:processedparam")
+    @Query(" from EventSourceDetail esd where esd.entityId=:entity_idparam and esd.entityMobileNo=:mobilenoparam and esd.entityName=:entitynameparam ")
     public ArrayList<EventSourceDetail> findByEntityIdandMobileNumberandProcessed(@Param("entity_idparam") String entityId,
             @Param("mobilenoparam") String entityMobileNo,
-            @Param("entitynameparam")String entityName,
-            @Param("processedparam") Boolean processed);
+            @Param("entitynameparam")String entityName
+            );
 
 }

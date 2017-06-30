@@ -132,6 +132,7 @@ public class LoanApprovalToGuarantorsEventListener implements
 				eventSourceDetails.setPayload(eventSource.getPayload());
 				eventSourceDetails.setTenantId(eventSource.getTenantId());
 				eventSourceDetails.setEntity("Loan_Approve");
+				eventSourceDetails.setProcessed(Boolean.FALSE);
 				
 				try {
 

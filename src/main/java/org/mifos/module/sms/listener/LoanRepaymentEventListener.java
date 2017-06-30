@@ -27,6 +27,7 @@ import org.mifos.module.sms.parser.JsonParser;
 import org.mifos.module.sms.provider.RestAdapterProvider;
 import org.mifos.module.sms.provider.SMSGateway;
 import org.mifos.module.sms.provider.SMSGatewayProvider;
+import org.mifos.module.sms.repository.EventSourceDetailsRepository;
 import org.mifos.module.sms.repository.EventSourceRepository;
 import org.mifos.module.sms.repository.SMSBridgeConfigRepository;
 import org.mifos.module.sms.service.MifosClientService;
@@ -39,6 +40,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
 import retrofit.RestAdapter;
 import retrofit.RetrofitError;
 
@@ -58,19 +60,22 @@ public class LoanRepaymentEventListener implements ApplicationListener<LoanRepay
     private final RestAdapterProvider restAdapterProvider;
     private final SMSGatewayProvider smsGatewayProvider;
     private final JsonParser jsonParser;
-
+    private final EventSourceDetailsRepository eventSourceDetailsRepository;
     @Autowired
     public LoanRepaymentEventListener(final SMSBridgeConfigRepository smsBridgeConfigRepository,
                                       final EventSourceRepository eventSourceRepository,
                                       final RestAdapterProvider restAdapterProvider,
                                       final SMSGatewayProvider smsGatewayProvider,
-                                      final JsonParser jsonParser)
+                                      final JsonParser jsonParser,
+                                      final EventSourceDetailsRepository eventSourceDetailsRepository)
                                        {
         this.smsBridgeConfigRepository = smsBridgeConfigRepository;
         this.eventSourceRepository = eventSourceRepository;
         this.restAdapterProvider = restAdapterProvider;
         this.smsGatewayProvider = smsGatewayProvider;
         this.jsonParser = jsonParser;
+        this.eventSourceDetailsRepository = this.eventSourceDetailsRepository;
+        
         
     }
 
@@ -93,6 +98,17 @@ public class LoanRepaymentEventListener implements ApplicationListener<LoanRepay
         final long loanId = loanRepaymentResponse.getLoanId();
 
         final RestAdapter restAdapter = this.restAdapterProvider.get(smsBridgeConfig);
+        
+        //following changes for event souring details table
+        
+        final EventSourceDetail eventSourceDetail = new EventSourceDetail();
+        eventSourceDetail.setEventId(eventSource.getId());
+        eventSourceDetail.setTenantId(eventSource.getTenantId());
+        eventSourceDetail.setEntityId(Long.toString(clientId));
+        eventSourceDetail.setProcessed(Boolean.FALSE);
+        
+        
+        
         try {
             final String authToken = AuthorizationTokenBuilder.token(smsBridgeConfig.getMifosToken()).build();
             final MifosLoanService loanService = restAdapter.create(MifosLoanService.class);
@@ -101,6 +117,17 @@ public class LoanRepaymentEventListener implements ApplicationListener<LoanRepay
             final MifosClientService clientService = restAdapter.create(MifosClientService.class);
             final Client client = clientService.findClient(authToken, smsBridgeConfig.getTenantId(), clientId);
 
+            //following changes for event souring details table
+            StringBuilder entityDescription = new StringBuilder();
+            entityDescription.append("Client Id:" + clientId);
+            entityDescription.append("Client Name :" + client.getDisplayName());            
+            eventSourceDetail.setEntitydescription(entityDescription.toString());
+            eventSourceDetail.setEntity("LOANACCOUNT");
+            eventSourceDetail.setEntityName(client.getDisplayName());
+            eventSourceDetail.setEntityMobileNo(client.getMobileNo());
+            eventSourceDetail.setAction("REPAYMENT");
+            eventSourceDetail.setPayload(eventSource.getPayload());
+            
             final String mobileNo = client.getMobileNo();
             if (mobileNo != null) {
                 logger.info("Mobile number found, sending message!");
@@ -118,6 +145,7 @@ public class LoanRepaymentEventListener implements ApplicationListener<LoanRepay
                 if(result.getString("status").equals("success")||result.getString("status").equalsIgnoreCase("success"))
                 {
                 	eventSource.setProcessed(Boolean.TRUE);
+                	eventSourceDetail.setProcessed(Boolean.TRUE);
                 }
                 logger.info("Message is: "+ stringWriter);
             }            
@@ -128,14 +156,20 @@ public class LoanRepaymentEventListener implements ApplicationListener<LoanRepay
             }
             eventSource.setProcessed(Boolean.FALSE);
             eventSource.setErrorMessage(rer.getMessage());
+            eventSourceDetail.setProcessed(Boolean.FALSE);
+            eventSourceDetail.setErrorMessage(rer.getMessage());
         } catch (SMSGatewayException sgex) {
             eventSource.setProcessed(Boolean.FALSE);
             eventSource.setErrorMessage(sgex.getMessage());
+            eventSourceDetail.setProcessed(Boolean.FALSE);
+            eventSourceDetail.setErrorMessage(sgex.getMessage());
         } catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
         eventSource.setLastModifiedOn(new Date());
+        eventSource.setLastModifiedOn(new Date());
         this.eventSourceRepository.save(eventSource);
+        this.eventSourceDetailsRepository.save(eventSourceDetail);
     }
 }

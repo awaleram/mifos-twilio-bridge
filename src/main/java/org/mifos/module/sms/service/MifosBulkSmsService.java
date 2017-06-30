@@ -11,6 +11,7 @@ public interface MifosBulkSmsService {
     @GET("/runreports/{report_name}")
     public BulkSms findLoanReminder(@Header("Authorization") String authorization,
             @Header("X-Mifos-Platform-TenantId") String tenantIdentifier, @Path("report_name") final String report_name,
-            @Query("R_startDate") final String date);
+            @Query("R_startDate") final String date,
+            @Query("R_officeId") final Integer officeId);
 
 }

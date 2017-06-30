@@ -23,6 +23,7 @@ import org.json.JSONObject;
 import org.mifos.module.sms.domain.Client;
 import org.mifos.module.sms.domain.CreateClientResponse;
 import org.mifos.module.sms.domain.EventSource;
+import org.mifos.module.sms.domain.EventSourceDetail;
 import org.mifos.module.sms.domain.SMSBridgeConfig;
 import org.mifos.module.sms.event.CreateClientEvent;
 import org.mifos.module.sms.exception.SMSGatewayException;
@@ -30,6 +31,7 @@ import org.mifos.module.sms.parser.JsonParser;
 import org.mifos.module.sms.provider.RestAdapterProvider;
 import org.mifos.module.sms.provider.SMSGateway;
 import org.mifos.module.sms.provider.SMSGatewayProvider;
+import org.mifos.module.sms.repository.EventSourceDetailsRepository;
 import org.mifos.module.sms.repository.EventSourceRepository;
 import org.mifos.module.sms.repository.SMSBridgeConfigRepository;
 import org.mifos.module.sms.service.MifosClientService;
@@ -41,6 +43,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+
 
 
 import retrofit.RestAdapter;
@@ -62,19 +66,22 @@ public class CreateClientEventListener implements ApplicationListener<CreateClie
     private final RestAdapterProvider restAdapterProvider;
     private final SMSGatewayProvider smsGatewayProvider;
     private final JsonParser jsonParser;
-
+    private final EventSourceDetailsRepository eventSourcingDetailsRepository;
+    
     @Autowired
     public CreateClientEventListener(final SMSBridgeConfigRepository smsBridgeConfigRepository,
                                      final EventSourceRepository eventSourceRepository,
                                      final RestAdapterProvider restAdapterProvider,
                                      final SMSGatewayProvider smsGatewayProvider,
-                                     final JsonParser jsonParser) {
+                                     final JsonParser jsonParser,
+                                     final EventSourceDetailsRepository eventSourcingDetailsRepository) {
         super();
         this.smsBridgeConfigRepository = smsBridgeConfigRepository;
         this.eventSourceRepository = eventSourceRepository;
         this.restAdapterProvider = restAdapterProvider;
         this.smsGatewayProvider = smsGatewayProvider;
         this.jsonParser = jsonParser;
+        this.eventSourcingDetailsRepository = eventSourcingDetailsRepository;
     }
 
     @Transactional
@@ -96,14 +103,34 @@ public class CreateClientEventListener implements ApplicationListener<CreateClie
 
         final RestAdapter restAdapter = this.restAdapterProvider.get(smsBridgeConfig);
 
+        //following changes for eventSourcingDetails table
+        EventSourceDetail eventSourceDetails = new EventSourceDetail();
+        eventSourceDetails.setEventId(eventSource.getId());;
+        eventSourceDetails.setTenantId(eventSource.getTenantId());
+        eventSourceDetails.setEntityId(Long.toString(clientId));
+        eventSourceDetails.setProcessed(Boolean.FALSE);
+       
         try {
             final MifosClientService clientService = restAdapter.create(MifosClientService.class);
-
             final Client client = clientService.findClient(AuthorizationTokenBuilder.token(smsBridgeConfig.getMifosToken()).build(), smsBridgeConfig.getTenantId(), clientId);
             final String mobileNo = client.getMobileNo();
+          
+            //following changes for eventSourcingDetails table
+            StringBuilder entityDescription = new StringBuilder();
+            entityDescription.append("ClientId :" + clientId);
+            entityDescription.append("ClientName :" + client.getDisplayName());
+            eventSourceDetails.setEntitydescription(entityDescription.toString());
+            
+            eventSourceDetails.setEntity("CREATE_CLIENT");
+            eventSourceDetails.setEntityName(client.getDisplayName());
+            eventSourceDetails.setEntityMobileNo(client.getMobileNo());
+            eventSourceDetails.setAction("CREATE");
+            eventSourceDetails.setPayload(eventSource.getPayload());
+            
             if (mobileNo != null) {
                 logger.info("Mobile number found, sending message!");
 
+                
                 final VelocityContext velocityContext = new VelocityContext();
                 velocityContext.put("name", client.getDisplayName());
                 velocityContext.put("branch", client.getOfficeName());
@@ -116,6 +143,7 @@ public class CreateClientEventListener implements ApplicationListener<CreateClie
                 if(result.getString("status").equals("success")||result.getString("status").equalsIgnoreCase("success"))
                 {
                     eventSource.setProcessed(Boolean.TRUE);
+                    eventSourceDetails.setProcessed(Boolean.TRUE);
                 }
                 	logger.info("Message is: "+ stringWriter);
             }
@@ -126,14 +154,21 @@ public class CreateClientEventListener implements ApplicationListener<CreateClie
             }
             eventSource.setProcessed(Boolean.FALSE);
             eventSource.setErrorMessage(rer.getMessage());
+            eventSourceDetails.setProcessed(Boolean.FALSE);
+            eventSource.setErrorMessage(rer.getMessage());
         } catch (SMSGatewayException sgex) {
             eventSource.setProcessed(Boolean.FALSE);
+            eventSource.setErrorMessage(sgex.getMessage());
+            eventSourceDetails.setProcessed(Boolean.FALSE);
             eventSource.setErrorMessage(sgex.getMessage());
         } catch (JSONException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
         eventSource.setLastModifiedOn(new Date());
+        eventSourceDetails.setLastModifiedOn(new Date());
+        eventSourceDetails.setCreatedOn(new Date());
         this.eventSourceRepository.save(eventSource);
+        this.eventSourcingDetailsRepository.save(eventSourceDetails);
     }
 }
